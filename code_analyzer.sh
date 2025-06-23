@@ -1,10 +1,9 @@
 #!/bin/bash
 
-# code_analyzer.sh
-# Universal analyzer for PHP / HTML / JavaScript in mixed files (PHP, HTML, Blade, Twig)
-# Shows real line numbers with 3 lines before and after the error
-# Outputs to terminal and report.txt (overwritten each time)
-# Credits to Osvaldo Janeri <osvaldo@janeri.com.br>
+# code_analyzer.sh v5
+# Universal Bash analyzer for PHP + HTML + JavaScript mixed files.
+# Real line numbers in errors AND in context.
+# Works with Kilo Code / Roo Code / AI tools with .clinerules
 
 FILE="$1"
 TEMP_JS="/tmp/js_extracted_$(date +%s).js"
@@ -78,7 +77,9 @@ if [ -s "$TEMP_JS" ]; then
             echo -e "${RED}🚨 JS error at original line $ORIG_LINE:${NC}"
             echo "🚨 JS error at original line $ORIG_LINE:" >> "$REPORT"
 
-            sed -n "$((ORIG_LINE-3)),$((ORIG_LINE+3))p" "$FILE" | nl -ba | tee -a "$REPORT"
+            CONTEXT_START=$((ORIG_LINE-3))
+            sed -n "${CONTEXT_START},$((ORIG_LINE+3))p" "$FILE" | \
+            awk -v start=$CONTEXT_START '{ printf "%5d  %s\n", NR+start-1, $0 }' | tee -a "$REPORT"
 
             echo "-----------------------" | tee -a "$REPORT"
         done
@@ -106,7 +107,9 @@ if command -v tidy >/dev/null 2>&1; then
         echo -e "${YELLOW}⚠️ HTML issue at line $LINE:${NC}"
         echo "⚠️ HTML issue at line $LINE:" >> "$REPORT"
 
-        sed -n "$((LINE-3)),$((LINE+3))p" "$FILE" | nl -ba | tee -a "$REPORT"
+        CONTEXT_START=$((LINE-3))
+        sed -n "${CONTEXT_START},$((LINE+3))p" "$FILE" | \
+        awk -v start=$CONTEXT_START '{ printf "%5d  %s\n", NR+start-1, $0 }' | tee -a "$REPORT"
 
         echo "-----------------------" | tee -a "$REPORT"
     done
@@ -130,7 +133,10 @@ if command -v php >/dev/null 2>&1; then
         echo -e "${RED}🚨 PHP error at line $LINE:${NC}"
         echo "🚨 PHP error at line $LINE:" >> "$REPORT"
 
-        sed -n "$((LINE-3)),$((LINE+3))p" "$FILE" | nl -ba | tee -a "$REPORT"
+        CONTEXT_START=$((LINE-3))
+        sed -n "${CONTEXT_START},$((LINE+3))p" "$FILE" | \
+        awk -v start=$CONTEXT_START '{ printf "%5d  %s\n", NR+start-1, $0 }' | tee -a "$REPORT"
+
         echo "-----------------------" | tee -a "$REPORT"
     else
         echo -e "${GREEN}✅ PHP OK — no syntax errors${NC}"
@@ -164,10 +170,39 @@ echo "JS errors:    $JS_ERR_COUNT" >> "$REPORT"
 echo "HTML issues:  $HTML_WARN_COUNT" >> "$REPORT"
 echo "PHP:          $PHP_STATUS" >> "$REPORT"
 
+# ========= Errors Detected At =========
+JS_ERR_LINES=$(grep "JS error at original line" "$REPORT" | grep -oP '\d+' | tr '\n' ',' | sed 's/,$//')
+HTML_ERR_LINES=$(grep "HTML issue at line" "$REPORT" | grep -oP '\d+' | tr '\n' ',' | sed 's/,$//')
+PHP_ERR_LINES=$(grep "PHP error at line" "$REPORT" | grep -oP '\d+' | tr '\n' ',' | sed 's/,$//')
+
+echo ""
+echo "🚨 Errors detected at:"
+if [[ -n "$JS_ERR_LINES" ]]; then
+    echo "JS lines:    $JS_ERR_LINES"
+fi
+if [[ -n "$HTML_ERR_LINES" ]]; then
+    echo "HTML lines:  $HTML_ERR_LINES"
+fi
+if [[ -n "$PHP_ERR_LINES" ]]; then
+    echo "PHP lines:   $PHP_ERR_LINES"
+fi
+
+echo "" >> "$REPORT"
+echo "🚨 Errors detected at:" >> "$REPORT"
+if [[ -n "$JS_ERR_LINES" ]]; then
+    echo "JS lines:    $JS_ERR_LINES" >> "$REPORT"
+fi
+if [[ -n "$HTML_ERR_LINES" ]]; then
+    echo "HTML lines:  $HTML_ERR_LINES" >> "$REPORT"
+fi
+if [[ -n "$PHP_ERR_LINES" ]]; then
+    echo "PHP lines:   $PHP_ERR_LINES" >> "$REPORT"
+fi
+
 # END
 echo ""
 echo "🏁 Analysis complete!"
-echo "📄 Report saved to: $REPORT"
+echo "�� Report saved to: $REPORT"
 
 # Cleanup
 rm -f "$TEMP_JS" "$TEMP_HTML"
