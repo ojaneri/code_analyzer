@@ -4,6 +4,7 @@
 # Universal analyzer for PHP / HTML / JavaScript in mixed files (PHP, HTML, Blade, Twig)
 # Shows real line numbers with 3 lines before and after the error
 # Outputs to terminal and report.txt (overwritten each time)
+# Credits to Osvaldo Janeri <osvaldo@janeri.com.br>
 
 FILE="$1"
 TEMP_JS="/tmp/js_extracted_$(date +%s).js"
